@@ -1,0 +1,25 @@
+Alpha-Bits
+Part of a well-balanced breakfast!
+
+Module ID: alphaBits
+
+Created by: Candela
+
+Manual available here: https://ktane.timwi.de/HTML/Alpha-Bits.html
+
+---
+
+Build 1.0 notes:
+-Initial release
+
+Build 1.0.1 notes:
+-Bug involving text shaders has been resolved
+-Improved Twitch Plays functionality
+
+Build 1.0.2 notes:
+-Bug fix
+-Improved logging
+
+Build 1.0.3 notes:
+-Text should no longer appear through bomb
+-Improved logging
