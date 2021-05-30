@@ -16,8 +16,9 @@ public class AlphaBitsScript : MonoBehaviour {
 		public KMSelectable buttonSubmit;
 
 		private int[] operationIndices = new int[2];
-		private string[] alphabet = new string[32] {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V"};
-		private int alphabetIndex;
+        private string[] alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUV".Select(x => x.ToString()).ToArray();
+        private string alphaStr = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
+        private int alphabetIndex;
 		private string[,] letters = new string[2,2]; // stage, letter
 		private string[] operations = new string[8] {"OR", "AND", "XOR", "IMP", "NOR", "NAND", "XNOR", "IMPBY"};
 
@@ -271,10 +272,16 @@ public class AlphaBitsScript : MonoBehaviour {
 
 		void onSubmitPress(KMSelectable button) {
 				button.AddInteractionPunch();
+                if (moduleSolved)
+                {
+                    idNumber.text = "ID: BASED";
+                    audio.PlaySoundAtTransform(sounds[0].name, button.transform);
+                     return;
+                }
 				if(stage == 1) {
 						if(string.Equals(bigDisplay.text[1].ToString(), letters[0,answerIndex])) {
 								Debug.LogFormat("[Alpha-Bits #{0}] Stage 1: Entered " + letters[0,answerIndex] + ", this is correct", moduleId);
-								audio.PlaySoundAtTransform(sounds[0].name, transform);
+								audio.PlaySoundAtTransform(sounds[0].name, button.transform);
 								button.AddInteractionPunch(0.5f);
 								answerIndex++;
 								if(answerIndex == 2) {
@@ -296,7 +303,7 @@ public class AlphaBitsScript : MonoBehaviour {
 				} else if(stage == 2) {
 					if(string.Equals(bigDisplay.text[1].ToString(), letters[1,answerIndex])) {
 							Debug.LogFormat("[Alpha-Bits #{0}] Stage 2: Entered " + letters[1,answerIndex] + ", this is correct", moduleId);
-							audio.PlaySoundAtTransform(sounds[0].name, transform);
+							audio.PlaySoundAtTransform(sounds[0].name, button.transform);
 							button.AddInteractionPunch(0.5f);
 							answerIndex++;
 							if(answerIndex == 2) {
@@ -314,6 +321,7 @@ public class AlphaBitsScript : MonoBehaviour {
 									displayBR.text = " D";
 
 									GetComponent<KMBombModule>().HandlePass();
+                                    moduleSolved = true;
 							}
 					} else {
 								Debug.LogFormat("[Alpha-Bits #{0}] Stage 2: Entered" + bigDisplay.text[1] + ", this is incorrect - Strike given and stage reset", moduleId);
@@ -325,68 +333,59 @@ public class AlphaBitsScript : MonoBehaviour {
 
 		// TwitchPlays Code
 		#pragma warning disable 414
-    		private string TwitchHelpMessage = "Type '!{0} submit <letter1> <letter2>' to submit a full stage. Type '!{0} submit <letter>' to submit a single answer. The first stage must be submitted before the second.";
+    		private string TwitchHelpMessage = "Type '!{0} submit AB12 to submit those letters. Letters can be submitted in groups of 1, 2 and 4; spacing is optional.";
 		#pragma warning restore 414
 
-		protected IEnumerator ProcessTwitchCommand(string input) {
-				var split = input.ToUpperInvariant().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-
-				if(split.Length < 2 || split.Length > 3) {
-						yield return "sendtochat Invalid input, input cancelled";
-						yield break;
-				}
-
-				if(split[0] != "SUBMIT") {
-						yield return "sendtochat Invalid input, input cancelled";
-						yield break;
-				}
-
-				for(int i = 1; i < split.Length; i++) {
-						if(split[i].Length > 1) {
-								yield return "sendtochat Invalid input, input cancelled";
-								yield break;
-						}
-				}
-
-				if(!alphabet.Contains(split[1][0].ToString())) {
-						yield return "sendtochat Invalid character, input cancelled";
-						yield break;
-				} else if(split.Length == 3 && !alphabet.Contains(split[2][0].ToString())) {
-						yield return "sendtochat Invalid character, input cancelled";
-						yield break;
-				}
-
-				if(split.Length == 2 && split[1].Length == 1) {
-						char c = split[1][0];
-						while(bigDisplay.text[1] < c) {
-								arrowUp.OnInteract();
-								yield return new WaitForSeconds(0.05f);
-						}
-						while(bigDisplay.text[1] > c) {
-								arrowDown.OnInteract();
-								yield return new WaitForSeconds(0.05f);
-						}
-
-						yield return new KMSelectable[] { buttonSubmit };
-				}
-
-				if(split.Length == 3 && split[1].Length == 1 && split[2].Length == 1 && answerIndex == 0) {
-						char[] c = new char[2] { split[1][0], split[2][0] };
-						for(int i = 0; i < 2; i++) {
-								while(bigDisplay.text[1] < c[i]) {
-										arrowUp.OnInteract();
-										yield return new WaitForSeconds(0.05f);
-								}
-								while(bigDisplay.text[1] > c[i]) {
-										arrowDown.OnInteract();
-										yield return new WaitForSeconds(0.05f);
-								}
-
-								yield return new KMSelectable[] { buttonSubmit };
-								yield return new WaitForSeconds(0.5f);
-						}
-				}
-
-				yield return null;
-		}
+	protected IEnumerator ProcessTwitchCommand(string input)
+    {
+        input = input.Trim().ToUpperInvariant();
+        List<string> parameters = input.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+        if (parameters[0] == "SUBMIT")
+        {
+            parameters.Remove("SUBMIT");
+            string submission = parameters.Join(""); //Clumps the submission into one string
+            if (submission.Any(x => !alphabet.Contains(x.ToString())))
+            {
+                yield return "sendtochaterror Invalid submission character " + submission.First(x => !alphabet.Contains(x.ToString())) + ".";
+                yield break;
+            }
+            if (!new int[] { 1, 2, 4 }.Contains(submission.Length))
+            {
+                yield return "sendtochaterror Invalid amount of parameters.";
+                yield break;
+            }
+            yield return null;
+            foreach (char target in submission)
+            {
+                KMSelectable whichButton =
+                    (Math.Abs(alphaStr.IndexOf(bigDisplay.text.Last()) - alphaStr.IndexOf(target)) < 16) ^ (bigDisplay.text.Last() > target)
+                    ? arrowUp : arrowDown;
+                while (bigDisplay.text.Last() != target)
+                {
+                    whichButton.OnInteract();
+                    yield return new WaitForSeconds(0.1f);
+                }
+                buttonSubmit.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+        }
+    }
+    protected IEnumerator TwitchHandleForcedSolve()
+    {
+        int currentIndex = 2 * (stage - 1) + answerIndex;  //Calculates how many inputs have been entered so far. 
+        char[] submission = new string[] { letters[0, 0], letters[0, 1], letters[1, 0], letters[1, 1] }.Select(x => x[0]).Skip(currentIndex).ToArray();
+        foreach (char target in submission)
+        {
+            KMSelectable whichButton =
+                (Math.Abs(alphaStr.IndexOf(bigDisplay.text.Last()) - alphaStr.IndexOf(target)) < 16) ^ (bigDisplay.text.Last() > target)
+                ? arrowUp : arrowDown;
+            while (bigDisplay.text.Last() != target)
+            {
+                whichButton.OnInteract();
+                yield return new WaitForSeconds(0.1f);
+            }
+            buttonSubmit.OnInteract();
+            yield return new WaitForSeconds(0.1f);
+        }
+    }
 }
